@@ -124,8 +124,10 @@ jobs:
             --collect-all PyQt6 \
             notispf/_qt_main.py
           # PyInstaller defaults CFBundleShortVersionString to 0.0.0 — fix it
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${version}" dist/notispf-qt.app/Contents/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${version}" dist/notispf-qt.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${version}" dist/notispf-qt.app/Contents/Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${version}" dist/notispf-qt.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${version}" dist/notispf-qt.app/Contents/Info.plist 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${version}" dist/notispf-qt.app/Contents/Info.plist
           # Ad-hoc sign the entire bundle so every dylib/so has a valid PAC
           # signature — without this, CFBundleCopyBundleURL crashes on Apple
           # Silicon under macOS's __CFCheckCFInfoPACSignature check.
