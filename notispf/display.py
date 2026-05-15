@@ -16,9 +16,14 @@ _CP_TEXT     = 4   # normal text
 _CP_MODIFIED = 5   # modified-line indicator in prefix
 _CP_MSG      = 6   # message line
 _CP_CMD      = 7   # command input line
-_CP_RULER    = 9   # column ruler
-_CP_HIGHLIGHT = 10  # found pattern highlight
-_CP_FKEY     = 11  # function key bar
+_CP_RULER       = 9   # column ruler
+_CP_HIGHLIGHT   = 10  # found pattern highlight
+_CP_FKEY        = 11  # function key bar
+_CP_SYN_KEYWORD = 12  # syntax: keyword
+_CP_SYN_STRING  = 13  # syntax: string literal
+_CP_SYN_COMMENT = 14  # syntax: comment
+_CP_SYN_NUMBER  = 15  # syntax: numeric literal
+_CP_SYN_BUILTIN = 16  # syntax: builtin name
 
 
 @dataclass
@@ -43,6 +48,7 @@ class ViewState:
     help_mode: bool = False     # True when help screen is visible
     help_scroll: int = 0        # top line of help screen
     hex_mode: bool = False      # True when HEX ON is active
+    syntax_spans: list | None = None  # per-line [(start, end, category)] from syntax.py
 
 
 # Layout constants
@@ -79,10 +85,23 @@ class Display:
         curses.init_pair(_CP_MSG,      curses.COLOR_BLACK,  curses.COLOR_YELLOW)
         curses.init_pair(_CP_CMD,      curses.COLOR_WHITE,  cmd_bg)
         curses.init_pair(_CP_RULER,    curses.COLOR_BLACK,  curses.COLOR_WHITE)
-        curses.init_pair(_CP_HIGHLIGHT, curses.COLOR_BLACK,  curses.COLOR_YELLOW)
-        curses.init_pair(_CP_FKEY,     curses.COLOR_BLACK,  curses.COLOR_WHITE)
+        curses.init_pair(_CP_HIGHLIGHT,   curses.COLOR_BLACK,  curses.COLOR_YELLOW)
+        curses.init_pair(_CP_FKEY,        curses.COLOR_BLACK,  curses.COLOR_WHITE)
+        curses.init_pair(_CP_SYN_KEYWORD, curses.COLOR_CYAN,   -1)
+        curses.init_pair(_CP_SYN_STRING,  curses.COLOR_GREEN,  -1)
+        curses.init_pair(_CP_SYN_COMMENT, curses.COLOR_WHITE,  -1)
+        curses.init_pair(_CP_SYN_NUMBER,  curses.COLOR_MAGENTA,-1)
+        curses.init_pair(_CP_SYN_BUILTIN, curses.COLOR_YELLOW, -1)
 
         self.stdscr.keypad(True)
+
+    _SYNTAX_CAT_PAIR = {
+        'keyword': _CP_SYN_KEYWORD,
+        'string':  _CP_SYN_STRING,
+        'comment': _CP_SYN_COMMENT,
+        'number':  _CP_SYN_NUMBER,
+        'builtin': _CP_SYN_BUILTIN,
+    }
 
     _FKEY_ITEMS = [
         ("F1",  "HELP"),
@@ -265,61 +284,62 @@ class Display:
 
             text = buffer.lines[buf_idx].text
             base_attr = curses.color_pair(_CP_TEXT)
+            line_spans = (vs.syntax_spans[buf_idx]
+                          if vs.syntax_spans and buf_idx < len(vs.syntax_spans)
+                          else None)
             self._render_line_text(row, text, vs.col_offset, text_width,
-                                   base_attr, vs.highlight_pattern)
+                                   base_attr, vs.highlight_pattern, line_spans)
 
     def _render_line_text(self, row: int, text: str, col_offset: int,
                          text_width: int, base_attr: int,
-                         highlight_pattern: str) -> None:
-        """Render one line's text area, highlighting all pattern occurrences."""
-        # Build the padded display string for the visible window
+                         highlight_pattern: str,
+                         syntax_spans: list | None = None) -> None:
+        """Render one line's text area with syntax and pattern highlighting."""
         visible = text[col_offset:col_offset + text_width].ljust(text_width)
 
-        if not highlight_pattern:
+        # Fast path: nothing to colour
+        if not syntax_spans and not highlight_pattern:
             self._addstr_clipped(row, TEXT_OFFSET, visible, base_attr)
             return
 
-        # Find all match spans within the full text, clipped to visible window
-        needle = highlight_pattern.lower()
-        haystack = text.lower()
-        matches: list[tuple[int, int]] = []
-        start = 0
-        while True:
-            idx = haystack.find(needle, start)
-            if idx == -1:
-                break
-            matches.append((idx, idx + len(highlight_pattern)))
-            start = idx + len(highlight_pattern)
+        # Build a per-character attribute array, then run-length-encode for painting.
+        # Syntax spans are applied first; highlight pattern overwrites on top.
+        attrs = [base_attr] * text_width
 
-        if not matches:
-            self._addstr_clipped(row, TEXT_OFFSET, visible, base_attr)
-            return
+        if syntax_spans:
+            for span_start, span_end, cat in syntax_spans:
+                sc = max(span_start - col_offset, 0)
+                ec = min(span_end   - col_offset, text_width)
+                if sc < ec and cat in self._SYNTAX_CAT_PAIR:
+                    attr = curses.color_pair(self._SYNTAX_CAT_PAIR[cat])
+                    for i in range(sc, ec):
+                        attrs[i] = attr
 
-        hi_attr = curses.color_pair(_CP_HIGHLIGHT)
-        sc = 0  # screen column within text area
-        for match_start, match_end in matches:
-            # Characters before this match
-            before_start = match_start - col_offset
-            before_end = match_end - col_offset
-            seg_start = max(sc, 0)
-            seg_end = min(before_start, text_width)
-            if seg_start < seg_end:
-                self._addstr_clipped(row, TEXT_OFFSET + seg_start,
-                                     visible[seg_start:seg_end], base_attr)
-            sc = max(sc, before_start)
-            # Highlighted match characters
-            hi_start = max(sc, 0)
-            hi_end = min(before_end, text_width)
-            if hi_start < hi_end:
-                self._addstr_clipped(row, TEXT_OFFSET + hi_start,
-                                     visible[hi_start:hi_end], hi_attr)
-            sc = max(sc, before_end)
-            if sc >= text_width:
-                break
+        if highlight_pattern:
+            needle   = highlight_pattern.lower()
+            haystack = text.lower()
+            hi_attr  = curses.color_pair(_CP_HIGHLIGHT)
+            pos = 0
+            while True:
+                idx = haystack.find(needle, pos)
+                if idx == -1:
+                    break
+                sc = max(idx - col_offset, 0)
+                ec = min(idx + len(needle) - col_offset, text_width)
+                if sc < ec:
+                    for i in range(sc, ec):
+                        attrs[i] = hi_attr
+                pos = idx + len(needle)
 
-        # Remaining text after last match
-        if sc < text_width:
-            self._addstr_clipped(row, TEXT_OFFSET + sc, visible[sc:], base_attr)
+        # Paint run-length-encoded spans
+        sc = 0
+        while sc < text_width:
+            attr = attrs[sc]
+            ec = sc + 1
+            while ec < text_width and attrs[ec] == attr:
+                ec += 1
+            self._addstr_clipped(row, TEXT_OFFSET + sc, visible[sc:ec], attr)
+            sc = ec
 
     def _get_prefix_display(self, buf_idx: int, line_number: int,
                              prefix_area, vs: ViewState) -> str:

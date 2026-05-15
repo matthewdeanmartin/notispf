@@ -9,7 +9,7 @@ description = "A terminal text editor inspired by the ISPF editor from z/OS"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["pygments>=2.0"]
 authors = [
     { name = "mrthock", email = "m64357@gmail.com" }
 ]

@@ -7,6 +7,7 @@ import shlex
 from notispf.buffer import Buffer, Line
 from notispf.commands.registry import CommandRegistry
 from notispf.commands import line_cmds, block_cmds, exclude_cmds
+from notispf import syntax
 from notispf.commands.line_cmds import line_to_hex, hex_to_line
 from notispf.buffer import Line
 from notispf.display import Display, ViewState, TEXT_OFFSET, TOP_SENTINEL, BOT_SENTINEL
@@ -45,6 +46,9 @@ class App:
             screen_cols=80,
         )
         self._quit_flag = False
+        self._lexer = syntax.get_lexer(filepath)
+        self._syntax_gen = -1   # last buffer generation syntax_spans was built for
+        self._syntax_spans: list | None = None
 
     def _new_buffer(self, filepath: str) -> Buffer:
         buf = Buffer()
@@ -75,6 +79,10 @@ class App:
         rows, cols = self.display.stdscr.getmaxyx()
         self.vs.screen_rows = rows
         self.vs.screen_cols = cols
+        if self.buffer._generation != self._syntax_gen:
+            self._syntax_spans = syntax.build_spans(self.buffer.lines, self._lexer)
+            self._syntax_gen = self.buffer._generation
+        self.vs.syntax_spans = self._syntax_spans
         self.vs.pending_prefixes = dict(self.prefix_area._pending)
         # Overlay typed chars onto the line number digits (ISPF behaviour: number stays visible)
         if self.vs.prefix_mode:

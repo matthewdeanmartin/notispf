@@ -20,6 +20,7 @@ class Buffer:
         self._redo_stack: list[list[Line]] = []
         self._clipboard: list[str] = []
         self._grouping: bool = False  # True while coalescing text edits
+        self._generation: int = 0     # increments on every content change
 
         if filepath:
             self.load_file(filepath)
@@ -68,6 +69,7 @@ class Buffer:
     def _snapshot(self) -> None:
         if self._grouping:
             return
+        self._generation += 1
         self._undo_stack.append(copy.deepcopy(self.lines))
         self._redo_stack.clear()
 
@@ -85,6 +87,7 @@ class Buffer:
     def undo(self) -> bool:
         if not self._undo_stack:
             return False
+        self._generation += 1
         self._redo_stack.append(copy.deepcopy(self.lines))
         self.lines = self._undo_stack.pop()
         self.modified = True
@@ -93,6 +96,7 @@ class Buffer:
     def redo(self) -> bool:
         if not self._redo_stack:
             return False
+        self._generation += 1
         self._undo_stack.append(copy.deepcopy(self.lines))
         self.lines = self._redo_stack.pop()
         self.modified = True
