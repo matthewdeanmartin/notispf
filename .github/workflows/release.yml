@@ -88,7 +88,7 @@ jobs:
           name: linux
           path: release/
 
-  # ── macOS: .dmg + curses binary ────────────────────────────────────────────
+  # ── macOS: curses binary ───────────────────────────────────────────────────
   build-macos:
     needs: [validate]
     runs-on: macos-latest
@@ -100,62 +100,14 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install ".[qt]" pyinstaller
-
-      - name: Build icon.icns from icon.png
-        run: |
-          mkdir notispf.iconset
-          for size in 16 32 64 128 256 512; do
-            sips -z $size $size assets/icon.png --out "notispf.iconset/icon_${size}x${size}.png"
-          done
-          sips -z  32   32 assets/icon.png --out notispf.iconset/icon_16x16@2x.png
-          sips -z  64   64 assets/icon.png --out notispf.iconset/icon_32x32@2x.png
-          sips -z 256  256 assets/icon.png --out notispf.iconset/icon_128x128@2x.png
-          sips -z 512  512 assets/icon.png --out notispf.iconset/icon_256x256@2x.png
-          iconutil -c icns notispf.iconset -o assets/icon.icns
-
-      - name: Build Qt .app bundle
-        run: |
-          version="${{ github.ref_name }}"
-          version="${version#v}"
-          pyinstaller --windowed --name notispf-qt \
-            --icon assets/icon.icns \
-            --osx-bundle-identifier com.mrthock.notispf \
-            --collect-all PyQt6 \
-            notispf/_qt_main.py
-          # PyInstaller defaults CFBundleShortVersionString to 0.0.0 — fix it
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${version}" dist/notispf-qt.app/Contents/Info.plist 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${version}" dist/notispf-qt.app/Contents/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${version}" dist/notispf-qt.app/Contents/Info.plist 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${version}" dist/notispf-qt.app/Contents/Info.plist
-          # Ad-hoc sign the entire bundle so every dylib/so has a valid PAC
-          # signature — without this, CFBundleCopyBundleURL crashes on Apple
-          # Silicon under macOS's __CFCheckCFInfoPACSignature check.
-          codesign --force --deep --sign - dist/notispf-qt.app
+        run: pip install pyinstaller
 
       - name: Build curses binary
         run: pyinstaller --onefile --name notispf-macos notispf/__main__.py
 
-      - name: Create .dmg
-        run: |
-          brew install create-dmg
-          mkdir dmg-src
-          cp -r dist/notispf-qt.app dmg-src/
-          create-dmg \
-            --volname "notispf" \
-            --volicon "assets/icon.icns" \
-            --window-size 540 380 \
-            --icon-size 100 \
-            --icon "notispf-qt.app" 160 190 \
-            --hide-extension "notispf-qt.app" \
-            --app-drop-link 380 190 \
-            "notispf-qt.dmg" \
-            "dmg-src/"
-
       - name: Collect release artifacts
         run: |
           mkdir -p release
-          cp notispf-qt.dmg release/
           cp dist/notispf-macos release/
 
       - uses: actions/upload-artifact@v4
@@ -223,7 +175,6 @@ jobs:
           files: |
             dist/notispf-qt-x86_64.AppImage
             dist/notispf-linux
-            dist/notispf-qt.dmg
             dist/notispf-macos
             dist/notispf-qt-setup.exe
             dist/notispf-windows.exe

@@ -1,6 +1,6 @@
 # notispf
 
-A text editor inspired by the ISPF editor from z/OS mainframes, available as both a terminal app and a desktop GUI.
+A text editor inspired by the ISPF editor from z/OS mainframes, available as a terminal app on all platforms and a desktop GUI on Linux and Windows.
 Brings the prefix command area that ISPF users know and love to Linux, macOS, and Windows.
 
 ## Installation
@@ -9,10 +9,10 @@ Brings the prefix command area that ISPF users know and love to Linux, macOS, an
 
 Go to the [Releases page](https://github.com/mrthock/notispf/releases) and download for your platform:
 
-| Platform | GUI (recommended) | Terminal CLI |
-|----------|-------------------|--------------|
+| Platform | GUI | Terminal CLI |
+|----------|-----|--------------|
 | Linux    | `notispf-qt-x86_64.AppImage` | `notispf-linux` |
-| macOS    | `notispf-qt.dmg` | `notispf-macos` |
+| macOS    | — (coming soon) | `notispf-macos` |
 | Windows  | `notispf-qt-setup.exe` | `notispf-windows.exe` |
 
 **Linux AppImage:**
@@ -21,11 +21,7 @@ chmod +x notispf-qt-x86_64.AppImage
 ./notispf-qt-x86_64.AppImage myfile.txt
 ```
 
-**macOS DMG:** Open the `.dmg` and drag `notispf-qt` to your Applications folder.
-
-> **macOS note:** Without code signing, Gatekeeper will block the app on first launch.
-> Right-click the app → **Open** → **Open** to bypass the warning once.
-> For the CLI binary: `xattr -d com.apple.quarantine ./notispf-macos`
+> **macOS note:** `xattr -d com.apple.quarantine ./notispf-macos`
 
 **Windows installer:** Run `notispf-qt-setup.exe`. Creates a Start Menu entry and an optional desktop shortcut.
 
