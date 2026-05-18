@@ -1,6 +1,6 @@
 # Maintainer: mrthock
 pkgname=notispf
-pkgver=1.4.0
+pkgver=1.4.1
 pkgrel=1
 pkgdesc="A terminal text editor inspired by the ISPF editor from z/OS"
 arch=('x86_64')
@@ -8,7 +8,7 @@ url="https://github.com/mrthock/notispf"
 license=('MIT')
 depends=('glibc' 'ncurses')
 source=("notispf-linux::https://github.com/mrthock/notispf/releases/download/v${pkgver}/notispf-linux")
-sha256sums=('73cbe3b7b084bd8ba38fdc85f5449518adfc363928fc9fac05dac54821370a28')
+sha256sums=('b676cdc589aabaf14e71ec1f007f78c95b68abc389c1b39566672fcca9f00e26')
 
 package() {
     install -Dm755 "${srcdir}/notispf-linux" "${pkgdir}/usr/bin/notispf"
