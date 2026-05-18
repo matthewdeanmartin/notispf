@@ -250,6 +250,8 @@ class App:
                 self._enter_key()
             elif 32 <= key <= 126:
                 self._insert_char(chr(key))
+            else:
+                vs.message = f"[DEBUG] unhandled key={key} (0x{key:x})"
 
         return False
 
@@ -681,6 +683,9 @@ class App:
 
         elif 32 <= key <= 126 and len(vs.prefix_input) < 6:
             vs.prefix_input += chr(key)
+
+        else:
+            vs.message = f"[DEBUG] prefix unhandled key={key} (0x{key:x})"
 
         return False
 
