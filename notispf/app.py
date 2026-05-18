@@ -120,7 +120,7 @@ class App:
             return self._handle_prefix_key(key)
 
         # End any active edit group for non-text-edit keys
-        _text_edit_keys = {curses.KEY_BACKSPACE, 127, curses.KEY_DC,
+        _text_edit_keys = {curses.KEY_BACKSPACE, 127, 8, curses.KEY_DC,
                            curses.KEY_ENTER, ord('\n'), ord('\r')}
         if key not in _text_edit_keys and not (32 <= key <= 126):
             self.buffer.end_edit_group()
@@ -241,7 +241,7 @@ class App:
             vs.message = "Redone" if self.buffer.redo() else "Nothing to redo"
 
         elif vs.cursor_line >= 0:  # no text editing on sentinel rows
-            if key == curses.KEY_BACKSPACE or key == 127:
+            if key in (curses.KEY_BACKSPACE, 127, 8):
                 self._backspace()
             elif key == curses.KEY_DC:
                 self._delete_char()
@@ -307,7 +307,7 @@ class App:
                     vs.cursor_line = self.buffer.next_visible(len(self.buffer) - 1, -1)
                     self._scroll_to_cursor()
                 vs.message = "BOTTOM OF DATA"
-        elif key == curses.KEY_BACKSPACE or key == 127:
+        elif key in (curses.KEY_BACKSPACE, 127, 8):
             vs.command_input = vs.command_input[:-1]
         elif 32 <= key <= 126:
             vs.command_input += chr(key)
@@ -633,7 +633,7 @@ class App:
                     if self.buffer.lines:
                         vs.cursor_line = self.buffer.next_visible(
                             len(self.buffer) - 1, -1)
-            elif key in (curses.KEY_BACKSPACE, 127):
+            elif key in (curses.KEY_BACKSPACE, 127, 8):
                 vs.prefix_input = vs.prefix_input[:-1]
             elif 32 <= key <= 126 and len(vs.prefix_input) < 6:
                 vs.prefix_input += chr(key)
@@ -695,7 +695,7 @@ class App:
             vs.message = ""
             vs.cursor_col = 0
 
-        elif key == curses.KEY_BACKSPACE or key == 127:
+        elif key in (curses.KEY_BACKSPACE, 127, 8):
             vs.prefix_input = vs.prefix_input[:-1]
 
         elif 32 <= key <= 126 and len(vs.prefix_input) < 6:
