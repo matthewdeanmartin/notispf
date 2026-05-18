@@ -742,8 +742,6 @@ class App:
                 if result.cursor_hint is not None:
                     vs.cursor_line = max(0, min(result.cursor_hint, len(self.buffer) - 1))
                     self._scroll_to_cursor()
-            else:
-                last_message = "Waiting for block partner..."
 
         # Pass 2: paste commands (A/B), in line order
         for line_idx in sorted(pending.keys()):
@@ -759,6 +757,8 @@ class App:
                     vs.cursor_line = max(0, min(result.cursor_hint, len(self.buffer) - 1))
                     self._scroll_to_cursor()
 
+        if self.prefix_area._open_block and not last_message:
+            last_message = "Waiting for block partner..."
         vs.message = last_message
 
     def _save_and_quit(self) -> None:
