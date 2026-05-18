@@ -1,8 +1,8 @@
 import sys
-from notispf.app import App
 
 
 def main():
+    from notispf.app import App
     if len(sys.argv) < 2:
         print("Usage: notispf <file>")
         sys.exit(1)
