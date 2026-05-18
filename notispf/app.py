@@ -224,9 +224,9 @@ class App:
             vs.prefix_input = self.prefix_area._pending.get(vs.cursor_line, "")
             vs.message = "Type prefix command, Enter to execute, Esc to cancel"
 
-        # Shift+Tab: go to command bar if at top line, otherwise move up into prefix
+        # Shift+Tab: go to command bar if already at TOP_SENTINEL, otherwise move up into prefix
         elif key == curses.KEY_BTAB:
-            if vs.show_command and vs.cursor_line <= vs.top_line:
+            if vs.show_command and vs.cursor_line == TOP_SENTINEL:
                 vs.command_mode = True
                 vs.message = ""
             else:
@@ -250,8 +250,6 @@ class App:
                 self._enter_key()
             elif 32 <= key <= 126:
                 self._insert_char(chr(key))
-            else:
-                vs.message = f"[DEBUG] unhandled key={key} (0x{key:x})"
 
         return False
 
@@ -287,14 +285,13 @@ class App:
         elif key == curses.KEY_DOWN:  # down arrow — return to text at current position
             vs.command_mode = False
             vs.message = ""
-        elif key == ord('\t'):  # Tab — go to prefix area of line 1
+        elif key == ord('\t'):  # Tab — go to TOP_SENTINEL prefix area
             vs.command_mode = False
-            vs.cursor_line = 0
-            vs.cursor_col = 0
+            vs.cursor_line = TOP_SENTINEL
             vs.prefix_mode = True
-            vs.prefix_input = self.prefix_area._pending.get(0, "")
+            vs.prefix_input = self.prefix_area._pending.get(TOP_SENTINEL, "")
             self._scroll_to_cursor()
-            vs.message = "Type prefix command, Enter to execute, Esc to cancel"
+            vs.message = "Type I to insert above — Enter to execute, Esc to cancel"
         elif key in (curses.KEY_F7, curses.KEY_PPAGE):
             raw = vs.command_input.strip().upper()
             if _CMD_ALIASES.get(raw, raw) == "MAX":
@@ -616,6 +613,24 @@ class App:
                 self._move_cursor(-self._content_rows())
             elif key in (curses.KEY_NPAGE, curses.KEY_F8):
                 self._move_cursor(self._content_rows())
+            elif key == ord('\t'):  # Tab: exit to first/last real line
+                vs.prefix_mode = False
+                vs.prefix_input = ""
+                vs.message = ""
+                if vs.cursor_line == TOP_SENTINEL:
+                    vs.cursor_line = self.buffer.next_visible(0, 1) \
+                        if self.buffer.lines else BOT_SENTINEL
+            elif key == curses.KEY_BTAB:  # Shift+Tab: exit to command bar or last line
+                vs.prefix_mode = False
+                vs.prefix_input = ""
+                vs.message = ""
+                if vs.cursor_line == TOP_SENTINEL:
+                    if vs.show_command:
+                        vs.command_mode = True
+                else:  # BOT_SENTINEL
+                    if self.buffer.lines:
+                        vs.cursor_line = self.buffer.next_visible(
+                            len(self.buffer) - 1, -1)
             elif key in (curses.KEY_BACKSPACE, 127):
                 vs.prefix_input = vs.prefix_input[:-1]
             elif 32 <= key <= 126 and len(vs.prefix_input) < 6:
@@ -683,9 +698,6 @@ class App:
 
         elif 32 <= key <= 126 and len(vs.prefix_input) < 6:
             vs.prefix_input += chr(key)
-
-        else:
-            vs.message = f"[DEBUG] prefix unhandled key={key} (0x{key:x})"
 
         return False
 
