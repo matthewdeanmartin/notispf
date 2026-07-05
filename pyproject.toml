@@ -49,7 +49,7 @@ source = ["notispf"]
 
 [dependency-groups]
 dev = [
-    "keepachangelog-manager-fork[all]>=6.5.0",
+    "keepachangelog-manager-fork[all]>=6.6.0",
 ]
 
 # changelogmanager (keepachangelog-manager-fork) drives the release workflows.
